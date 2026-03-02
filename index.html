@@ -444,6 +444,10 @@ let currentType='expense', currentFilter='all', viewDate=new Date();
 
 // ── AUTH ──
 function signInWithGoogle(){
+  if(typeof google==='undefined'){
+    alert('Could not connect to Google. Please check your internet and try again.');
+    return;
+  }
   google.accounts.id.initialize({client_id:CLIENT_ID,callback:handleCredentialResponse});
   google.accounts.id.prompt(n=>{
     if(n.isNotDisplayed()||n.isSkippedMoment())
@@ -511,14 +515,24 @@ window.addEventListener('load',()=>{
   const dateInput=document.getElementById('date');
   dateInput.value=today;
   dateInput.max=today;
+
   const u=JSON.parse(localStorage.getItem('sw_user')||'null');
-  if(u){currentUser=u; loadUserData(); showApp();}
-  else{
+  if(u){
+    // Already logged in — show app immediately, no Google script needed
+    currentUser=u; loadUserData(); showApp();
+  } else {
+    // Need to login — wait for splash then show login screen
     setTimeout(()=>{
       document.getElementById('splash').classList.add('hide');
-      setTimeout(()=>{document.getElementById('splash').style.display='none';document.getElementById('login-screen').style.display='flex';},600);
+      setTimeout(()=>{
+        document.getElementById('splash').style.display='none';
+        document.getElementById('login-screen').style.display='flex';
+        // Init Google Sign-In if script loaded
+        if(typeof google!=='undefined'){
+          google.accounts.id.initialize({client_id:CLIENT_ID,callback:handleCredentialResponse});
+        }
+      },600);
     },1800);
-    window.onGoogleLibraryLoad=()=>google.accounts.id.initialize({client_id:CLIENT_ID,callback:handleCredentialResponse});
   }
 });
 
@@ -945,33 +959,6 @@ function fmtInput(n){
     return n.toLocaleString('en-IN',{maximumFractionDigits:0});
   }
   return n.toLocaleString(undefined,{maximumFractionDigits:0});
-}
-
-function onAmountInput(e){
-  // Strip all non-numeric except dot
-  const raw=e.target.value.replace(/[^0-9.]/g,'');
-  e.target.value=raw;
-  const num=parseFloat(raw);
-  const preview=document.getElementById('amount-preview');
-  if(!isNaN(num)&&num>0){
-    preview.textContent=`= ${currency.symbol}${fmtInput(num)}`;
-    preview.style.display='block';
-  } else {
-    preview.style.display='none';
-  }
-}
-
-function onGoalAmountInput(e){
-  const raw=e.target.value.replace(/[^0-9.]/g,'');
-  e.target.value=raw;
-  const num=parseFloat(raw);
-  const preview=document.getElementById('goal-amount-preview');
-  if(!isNaN(num)&&num>0){
-    preview.textContent=`= ${currency.symbol}${fmtInput(num)}`;
-    preview.style.display='block';
-  } else {
-    preview.style.display='none';
-  }
 }
 
 function formatDate(d){const[y,m,day]=d.split('-');return `${monthsShort[parseInt(m)-1]} ${parseInt(day)}, ${y}`;}
