@@ -567,6 +567,87 @@ body {
 .empty { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: 0.85rem; }
 .empty span { display: block; font-size: 2rem; margin-bottom: 0.5rem; }
 
+/* Backup */
+.backup-card {
+  background: linear-gradient(135deg, #3A6B1E, #6BAF35);
+  border-radius: 16px;
+  padding: 2rem 1.25rem;
+  text-align: center;
+  color: white;
+  box-shadow: 0 4px 20px rgba(58,107,30,0.3);
+}
+
+.backup-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.backup-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 0.5rem; }
+.backup-stats { font-size: 0.82rem; opacity: 0.85; line-height: 1.6; }
+
+.backup-action-card {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.backup-action-header {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.backup-action-icon { font-size: 1.5rem; flex-shrink: 0; margin-top: 2px; }
+.backup-action-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; }
+.backup-action-sub { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+.btn-backup {
+  width: 100%;
+  padding: 0.8rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.2s;
+}
+
+.btn-backup:active { opacity: 0.8; }
+
+.btn-restore {
+  width: 100%;
+  padding: 0.8rem;
+  background: var(--gold-light);
+  color: var(--gold);
+  border: 1.5px solid #E8C84A;
+  border-radius: 12px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.backup-last {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 0.6rem;
+}
+
+.backup-warning {
+  background: #FFF8E6;
+  border: 1px solid #F0D060;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  font-size: 0.78rem;
+  color: #7A5C00;
+  line-height: 1.5;
+}
+
 /* Currency Modal */
 .modal-overlay {
   display: none;
@@ -701,6 +782,7 @@ body {
     <button class="active" onclick="switchTab('add', this)">＋ Add</button>
     <button onclick="switchTab('goals', this)">🎯 Goals</button>
     <button onclick="switchTab('history', this)">📋 History</button>
+    <button onclick="switchTab('backup', this)">☁️ Backup</button>
   </div>
 
   <!-- Add Panel -->
@@ -783,6 +865,49 @@ body {
       </div>
       <ul class="txn-list" id="txn-list"></ul>
     </div>
+  </div>
+
+  <!-- Backup Panel -->
+  <div class="panel" id="panel-backup">
+
+    <!-- Stats card -->
+    <div class="backup-card">
+      <div class="backup-icon">☁️</div>
+      <div class="backup-title">Your Data</div>
+      <div class="backup-stats" id="backup-stats">Loading...</div>
+    </div>
+
+    <!-- Backup -->
+    <div class="backup-action-card">
+      <div class="backup-action-header">
+        <span class="backup-action-icon">⬇️</span>
+        <div>
+          <div class="backup-action-title">Save Backup</div>
+          <div class="backup-action-sub">Downloads a file to your phone. Save it to Google Drive, WhatsApp, or anywhere safe.</div>
+        </div>
+      </div>
+      <button class="btn-backup" onclick="exportBackup()">Download Backup File</button>
+      <div class="backup-last" id="last-backup">No backup made yet</div>
+    </div>
+
+    <!-- Restore -->
+    <div class="backup-action-card">
+      <div class="backup-action-header">
+        <span class="backup-action-icon">⬆️</span>
+        <div>
+          <div class="backup-action-title">Restore Backup</div>
+          <div class="backup-action-sub">Pick a backup file you saved before. All your data will be restored instantly.</div>
+        </div>
+      </div>
+      <button class="btn-restore" onclick="document.getElementById('restore-input').click()">Choose Backup File</button>
+      <input type="file" id="restore-input" accept=".json" style="display:none" onchange="importBackup(event)"/>
+    </div>
+
+    <!-- Warning -->
+    <div class="backup-warning">
+      ⚠️ Restoring a backup will <strong>replace all current data</strong>. Make sure to backup first!
+    </div>
+
   </div>
 
 </div>
@@ -954,6 +1079,7 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + tab).classList.add('active');
   if (tab === 'history') render();
+  if (tab === 'backup') updateBackupStats();
 }
 
 // ── TYPE ──
@@ -1126,6 +1252,94 @@ function formatDate(d) {
   const [y, m, day] = d.split('-');
   return `${monthsShort[parseInt(m)-1]} ${parseInt(day)}, ${y}`;
 }
+
+// ── BACKUP & RESTORE ──
+function updateBackupStats() {
+  const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  document.getElementById('backup-stats').innerHTML =
+    `${transactions.length} transactions · ${goals.length} goals<br>
+     Total income: ${currency.symbol}${fmt(totalIncome)}<br>
+     Total expenses: ${currency.symbol}${fmt(totalExpense)}`;
+
+  const lastBackup = localStorage.getItem('sw_last_backup');
+  document.getElementById('last-backup').textContent = lastBackup
+    ? `Last backup: ${lastBackup}`
+    : 'No backup made yet';
+}
+
+function exportBackup() {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    currency,
+    transactions,
+    goals
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `spendwise-backup-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  const now = new Date().toLocaleString();
+  localStorage.setItem('sw_last_backup', now);
+
+  const btn = document.querySelector('.btn-backup');
+  btn.textContent = '✅ Backup Saved!';
+  setTimeout(() => { btn.textContent = 'Download Backup File'; updateBackupStats(); }, 2000);
+}
+
+function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+
+      if (!data.transactions || !Array.isArray(data.transactions)) {
+        alert('❌ Invalid backup file. Please choose a valid SpendWise backup.');
+        return;
+      }
+
+      if (!confirm(`Restore ${data.transactions.length} transactions and ${(data.goals || []).length} goals from ${data.exportedAt ? new Date(data.exportedAt).toLocaleDateString() : 'this backup'}?\n\nThis will replace all current data.`)) return;
+
+      transactions = data.transactions;
+      goals = data.goals || [];
+      if (data.currency) {
+        currency = data.currency;
+        localStorage.setItem('sw_currency', JSON.stringify(currency));
+        updateCurrencyDisplay();
+      }
+
+      localStorage.setItem('sw_transactions', JSON.stringify(transactions));
+      localStorage.setItem('sw_goals', JSON.stringify(goals));
+
+      updateSummary();
+      updateDateLabel();
+      render();
+      renderGoals();
+      updateBackupStats();
+
+      const btn = document.querySelector('.btn-restore');
+      btn.textContent = '✅ Restored Successfully!';
+      setTimeout(() => { btn.textContent = 'Choose Backup File'; }, 2500);
+
+    } catch (err) {
+      alert('❌ Could not read backup file. Make sure it\'s a valid SpendWise backup.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
 </script>
 </body>
-         </html>
+</html>
