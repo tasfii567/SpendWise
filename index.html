@@ -11,6 +11,49 @@
 <link rel="apple-touch-icon" href="icon-192.png"/>
 <link rel="manifest" href="manifest.json"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet"/>
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import{getFirestore,doc,setDoc,getDoc,onSnapshot}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const firebaseConfig={
+  apiKey:"AIzaSyDTRVqlkHxwvCVpIBKiUDuJGq17ky2V_xQ",
+  authDomain:"spendwise-d53c2.firebaseapp.com",
+  projectId:"spendwise-d53c2",
+  storageBucket:"spendwise-d53c2.firebasestorage.app",
+  messagingSenderId:"122348613571",
+  appId:"1:122348613571:web:2b2adebe4f2698319b1776"
+};
+
+const fbApp=initializeApp(firebaseConfig);
+const db=getFirestore(fbApp);
+let unsubscribe=null;
+
+window.fbSave=async(uid,data)=>{
+  try{
+    await setDoc(doc(db,'users',uid),data);
+  }catch(e){console.warn('FB save failed',e);}
+};
+
+window.fbListen=async(uid,onData)=>{
+  if(unsubscribe) unsubscribe();
+  // Try to get data first
+  try{
+    const snap=await getDoc(doc(db,'users',uid));
+    if(snap.exists()) onData(snap.data());
+  }catch(e){console.warn('FB get failed',e);}
+  // Then listen for real-time updates
+  unsubscribe=onSnapshot(doc(db,'users',uid),(snap)=>{
+    if(snap.exists()) onData(snap.data());
+  });
+};
+
+window.fbStop=()=>{
+  if(unsubscribe){unsubscribe();unsubscribe=null;}
+};
+
+window.fbReady=true;
+document.dispatchEvent(new Event('fb-ready'));
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -248,6 +291,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
   <div class="hdr">
     <h1>SpendWise 🌿</h1>
     <div class="hdr-r">
+      <div id="sync-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:#27AE60;margin-right:2px;" title="Synced"></div>
       <button class="cur-btn" id="cur-btn" onclick="openCurModal()">৳ BDT</button>
       <button class="cvt-btn" id="cvt-btn" onclick="toggleConvert()">⇄</button>
       <div id="uavt-wrap" onclick="toggleUMenu()"></div>
@@ -260,15 +304,12 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
     <select class="cvt-sel" id="cvt-sel" onchange="onCvtChange()"></select>
   </div>
 
-  <!-- Date nav -->
+  <!-- Date nav - current month only, no navigation -->
   <div class="dnav">
-    <button onclick="changeMonth(-1)">‹</button>
-    <div class="dnav-c">
+    <div class="dnav-c" style="width:100%;">
       <div class="dnav-my" id="dnav-my">—</div>
       <div class="dnav-sub" id="dnav-sub">0 transactions</div>
-      <button class="dnav-today" id="dnav-today" onclick="goToday()">Back to today</button>
     </div>
-    <button onclick="changeMonth(1)">›</button>
   </div>
 
   <!-- Summary -->
@@ -498,18 +539,50 @@ function onGoogleCred(res){
   const p=JSON.parse(decodeURIComponent(atob(b).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
   user={name:p.name,email:p.email,pic:p.picture,id:p.sub};
   localStorage.setItem('sw_u',JSON.stringify(user));
-  loadUD(); showApp();
+  showApp();
+  loadUD();
+}
+
+function loadFromData(d){
+  txns=d.txns||[]; goals=d.goals||[];
+  cur=d.cur||{c:'BDT',s:'৳',n:'Bangladeshi Taka'};
+  updateCurBtn(); updateDNav(); updateSum(); renderGoals(); renderTxns();
 }
 
 function loadUD(){
+  // Load from localStorage as fallback first
   const d=JSON.parse(localStorage.getItem('sw_'+user.id)||'{}');
-  txns=d.txns||[]; goals=d.goals||[];
-  cur=d.cur||{c:'BDT',s:'৳',n:'Bangladeshi Taka'};
+  if(d.txns) loadFromData(d);
+  // Then sync from Firebase
+  if(window.fbReady){
+    startFirebaseSync();
+  } else {
+    document.addEventListener('fb-ready',startFirebaseSync,{once:true});
+  }
+}
+
+function startFirebaseSync(){
+  window.fbListen(user.id,(data)=>{
+    loadFromData(data);
+    // Also update localStorage cache
+    localStorage.setItem('sw_'+user.id,JSON.stringify(data));
+    $('sync-dot').style.display='block';
+  });
 }
 
 function saveUD(){
   if(!user) return;
-  localStorage.setItem('sw_'+user.id,JSON.stringify({txns,goals,cur}));
+  const data={txns,goals,cur};
+  // Save to localStorage immediately
+  localStorage.setItem('sw_'+user.id,JSON.stringify(data));
+  // Save to Firebase
+  if(window.fbReady){
+    $('sync-dot').style.background='#D4A017';
+    window.fbSave(user.id,data).then(()=>{
+      $('sync-dot').style.display='block';
+      $('sync-dot').style.background='#27AE60';
+    });
+  }
 }
 
 function showApp(){
@@ -527,7 +600,9 @@ function showApp(){
 function doSignOut(){
   if(!confirm('Sign out of SpendWise?')) return;
   if(typeof google!=='undefined') google.accounts.id.disableAutoSelect();
+  if(window.fbStop) window.fbStop();
   user=null; txns=[]; goals=[];
+  $('sync-dot').style.display='none';
   closeUMenu();
   $('app').classList.remove('show');
   $('login').classList.add('show');
@@ -548,7 +623,7 @@ window.addEventListener('load',()=>{
     $('splash').classList.add('hide');
     setTimeout(()=>{
       $('splash').style.display='none';
-      if(u){user=u; loadUD(); showApp();}
+      if(u){user=u; showApp(); loadUD();}
       else{$('login').classList.add('show');}
     },500);
   },1800);
@@ -707,20 +782,14 @@ function renderGoals(){
   }).join('');
 }
 
-// ── DATE NAV ──
-function changeMonth(d){
-  viewDate=new Date(viewDate.getFullYear(),viewDate.getMonth()+d,1);
-  updateDNav(); updateSum(); renderTxns();
-}
-function goToday(){viewDate=new Date();updateDNav();updateSum();renderTxns();}
+// ── DATE NAV (current month only) ──
 function getMonthTxns(){
-  return txns.filter(t=>{const d=new Date(t.date);return d.getMonth()===viewDate.getMonth()&&d.getFullYear()===viewDate.getFullYear();});
+  const now=new Date();
+  return txns.filter(t=>{const d=new Date(t.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
 }
 function updateDNav(){
   const now=new Date();
-  const isNow=viewDate.getMonth()===now.getMonth()&&viewDate.getFullYear()===now.getFullYear();
-  $('dnav-my').textContent=`${MONTHS[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
-  $('dnav-today').style.display=isNow?'none':'block';
+  $('dnav-my').textContent=`${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
   const mt=getMonthTxns();
   $('dnav-sub').textContent=`${mt.length} transaction${mt.length!==1?'s':''}`;
 }
