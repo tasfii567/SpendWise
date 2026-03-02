@@ -13,7 +13,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
 <link rel="manifest" href="manifest.json"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Nunito:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -148,6 +148,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 .cat-check{display:flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:600;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:.3rem .6rem;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all .15s;}
 .cat-check input{accent-color:var(--accent);width:13px;height:13px;cursor:pointer;}
 .cat-check:has(input:checked){background:var(--accent-light);border-color:var(--accent);color:var(--accent);}
+.cat-check.checked{background:var(--accent-light);border-color:var(--accent);color:var(--accent);}
 /* goal bar with pct label inside */
 .goal-bar-outer{position:relative;background:var(--border);border-radius:99px;height:22px;overflow:hidden;margin:.5rem 0;}
 .goal-bar-fill{height:100%;border-radius:99px;transition:width .7s cubic-bezier(.34,1.2,.64,1);display:flex;align-items:center;justify-content:flex-end;padding-right:6px;min-width:32px;}
@@ -304,7 +305,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
             <button type="button" onclick="setAmountFormat('intl')" id="fmt-intl" style="flex:1;padding:.28rem .2rem;font-size:.65rem;font-weight:700;border-radius:7px;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);cursor:pointer;font-family:'Nunito',sans-serif;">🌍 3,500,000</button>
           </div>
         </div>
-        <div class="field"><label>Date</label><input type="date" id="date" max=""/></div>
+        <div class="field"><label>Date</label><input type="date" id="date" max="2099-12-31"/></div>
       </div>
       <div class="field">
         <label>Category</label>
@@ -366,17 +367,17 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
         <div class="field">
           <label>Count income from these categories</label>
           <div class="cat-checkboxes" id="goal-cat-checks">
-            <label class="cat-check"><input type="checkbox" value="🍔 Food"/> 🍔 Food</label>
-            <label class="cat-check"><input type="checkbox" value="🏠 Housing"/> 🏠 Housing</label>
-            <label class="cat-check"><input type="checkbox" value="🚗 Transport"/> 🚗 Transport</label>
-            <label class="cat-check"><input type="checkbox" value="💊 Health"/> 💊 Health</label>
-            <label class="cat-check"><input type="checkbox" value="🎉 Entertainment"/> 🎉 Entertainment</label>
-            <label class="cat-check"><input type="checkbox" value="🛍 Shopping"/> 🛍 Shopping</label>
-            <label class="cat-check"><input type="checkbox" value="💼 Work" checked/> 💼 Work</label>
-            <label class="cat-check"><input type="checkbox" value="💰 Savings" checked/> 💰 Savings</label>
-            <label class="cat-check"><input type="checkbox" value="📦 Other"/> 📦 Other</label>
+            <label class="cat-check"><input type="checkbox" value="🍔 Food" onchange="toggleCatClass(this)"/> 🍔 Food</label>
+            <label class="cat-check"><input type="checkbox" value="🏠 Housing" onchange="toggleCatClass(this)"/> 🏠 Housing</label>
+            <label class="cat-check"><input type="checkbox" value="🚗 Transport" onchange="toggleCatClass(this)"/> 🚗 Transport</label>
+            <label class="cat-check"><input type="checkbox" value="💊 Health" onchange="toggleCatClass(this)"/> 💊 Health</label>
+            <label class="cat-check"><input type="checkbox" value="🎉 Entertainment" onchange="toggleCatClass(this)"/> 🎉 Entertainment</label>
+            <label class="cat-check"><input type="checkbox" value="🛍 Shopping" onchange="toggleCatClass(this)"/> 🛍 Shopping</label>
+            <label class="cat-check checked"><input type="checkbox" value="💼 Work" checked onchange="toggleCatClass(this)"/> 💼 Work</label>
+            <label class="cat-check checked"><input type="checkbox" value="💰 Savings" checked onchange="toggleCatClass(this)"/> 💰 Savings</label>
+            <label class="cat-check"><input type="checkbox" value="📦 Other" onchange="toggleCatClass(this)"/> 📦 Other</label>
           </div>
-          <label class="cat-check" style="margin-top:.4rem;font-weight:700;color:var(--accent);">
+          <label class="cat-check" style="margin-top:.4rem;font-weight:700;color:var(--accent);" id="cat-all-label">
             <input type="checkbox" id="cat-all" onchange="toggleAllCats(this)"/> 📊 All Income
           </label>
         </div>
@@ -508,7 +509,7 @@ document.addEventListener('click',e=>{
 window.addEventListener('load',()=>{
   const today=new Date().toISOString().split('T')[0];
   const dateInput=document.getElementById('date');
-  dateInput.valueAsDate=new Date();
+  dateInput.value=today;
   dateInput.max=today;
   const u=JSON.parse(localStorage.getItem('sw_user')||'null');
   if(u){currentUser=u; loadUserData(); showApp();}
@@ -660,8 +661,16 @@ function updateRatePreview(){
   }
 }
 
+function toggleCatClass(cb){
+  cb.parentElement.classList.toggle('checked', cb.checked);
+}
+
 function toggleAllCats(cb){
-  document.querySelectorAll('#goal-cat-checks input[type=checkbox]').forEach(c=>c.checked=cb.checked);
+  document.querySelectorAll('#goal-cat-checks input[type=checkbox]').forEach(c=>{
+    c.checked=cb.checked;
+    toggleCatClass(c);
+  });
+  document.getElementById('cat-all-label').classList.toggle('checked', cb.checked);
 }
 
 function getSelectedCategories(){
