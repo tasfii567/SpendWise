@@ -1,6 +1,6 @@
 {
   "name": "SpendWise",
-  "short_name": "Expenses",
+  "short_name": "SpendWise",
   "description": "Track your income and expenses easily",
   "start_url": "/",
   "display": "standalone",
