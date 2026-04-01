@@ -1,11 +1,11 @@
-const CACHE_NAME = 'expense-tracker-v1';
+const CACHE_NAME = 'expense-tracker-v2';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  'https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap'
+  '/icon-192.png',
+  '/icon-512.png',
+  'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Nunito:wght@400;600;700&display=swap'
 ];
 
 // Install: cache all assets
