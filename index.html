@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet"/>
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import{getFirestore,doc,setDoc,getDoc,onSnapshot}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import{getFirestore,doc,setDoc,onSnapshot}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const firebaseConfig={
   apiKey:"AIzaSyDTRVqlkHxwvCVpIBKiUDuJGq17ky2V_xQ",
@@ -34,17 +34,12 @@ window.fbSave=async(uid,data)=>{
   }catch(e){console.warn('FB save failed',e);}
 };
 
-window.fbListen=async(uid,onData)=>{
+window.fbListen=(uid,onData)=>{
   if(unsubscribe) unsubscribe();
-  // Try to get data first
-  try{
-    const snap=await getDoc(doc(db,'users',uid));
-    if(snap.exists()) onData(snap.data());
-  }catch(e){console.warn('FB get failed',e);}
-  // Then listen for real-time updates
+  // onSnapshot fires immediately with current data — no need for a separate getDoc
   unsubscribe=onSnapshot(doc(db,'users',uid),(snap)=>{
     if(snap.exists()) onData(snap.data());
-  });
+  },(e)=>{console.warn('FB listen failed',e);});
 };
 
 window.fbStop=()=>{
@@ -468,17 +463,33 @@ function fmtDate(d){const[y,m,day]=d.split('-');return `${MSHORT[+m-1]} ${+day},
 function csym(code){return (CURRENCIES.find(x=>x.c===code)||{s:code}).s;}
 function parseAmt(v){return parseFloat(v.replace(/,/g,''))||0;}
 function flash(el){el.classList.add('err');el.focus();setTimeout(()=>el.classList.remove('err'),1200);}
+// Escape user-supplied strings before injecting into innerHTML
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function applyFmt(str,fmt){
-  if(!str) return '';
+  if(!str||str==='0') return str;
   if(fmt==='bd'){
     if(str.length<=3) return str;
-    const last=str.slice(-3), rest=str.slice(0,-3);
+    const last=str.slice(-3);
+    const rest=str.slice(0,-3);
+    if(!rest) return str;
     const g=[];
     for(let i=rest.length;i>0;i-=2) g.unshift(rest.slice(Math.max(0,i-2),i));
-    return g.join(',')+','+last;
+    return g.filter(Boolean).join(',')+','+last;
   }
   return str.replace(/\B(?=(\d{3})+(?!\d))/g,',');
+}
+
+// Debounced Firestore save — batches rapid changes into one write
+let _saveTimer=null;
+function debouncedFbSave(uid,data){
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(async()=>{
+    if(window.fbReady){
+      await window.fbSave(uid,data);
+      $('sync-dot').style.background='#27AE60';
+    }
+  },800);
 }
 
 function onAmtInput(el,which){
@@ -525,22 +536,44 @@ function loadGoogleScript(cb){
 function doGoogleLogin(){
   $('g-error').style.display='none';
   loadGoogleScript(()=>{
-    google.accounts.id.initialize({client_id:CID,callback:onGoogleCred});
+    google.accounts.id.initialize({
+      client_id:CID,
+      callback:onGoogleCred,
+      ux_mode:'popup',
+    });
     google.accounts.id.prompt(n=>{
+      // origin_mismatch or popup blocked — fall back to renderButton
       if(n.isNotDisplayed()||n.isSkippedMoment()){
-        google.accounts.id.renderButton($('login'),{theme:'outline',size:'large'});
+        const wrap=document.createElement('div');
+        wrap.style.cssText='margin-top:1rem;';
+        $('login').appendChild(wrap);
+        google.accounts.id.renderButton(wrap,{theme:'outline',size:'large',width:280});
+        if(n.getNotDisplayedReason()==='suppressed_by_user'||n.getSkippedReason()==='user_cancel'){
+          $('g-error').textContent='⚠️ Popup was blocked or dismissed — use the button above.';
+          $('g-error').style.display='block';
+        }
       }
     });
   });
 }
 
-function onGoogleCred(res){
-  const b=res.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
-  const p=JSON.parse(decodeURIComponent(atob(b).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));
-  user={name:p.name,email:p.email,pic:p.picture,id:p.sub};
-  localStorage.setItem('sw_u',JSON.stringify(user));
-  showApp();
-  loadUD();
+async function onGoogleCred(res){
+  // Verify the credential token via Google's tokeninfo endpoint
+  // This avoids trusting an unverified JWT payload client-side
+  try{
+    const r=await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${res.credential}`);
+    if(!r.ok) throw new Error('Token verification failed');
+    const p=await r.json();
+    if(p.aud!==CID) throw new Error('Client ID mismatch');
+    user={name:p.name,email:p.email,pic:p.picture,id:p.sub};
+    localStorage.setItem('sw_u',JSON.stringify(user));
+    showApp();
+    loadUD();
+  }catch(e){
+    console.warn('Google credential error',e);
+    $('g-error').textContent='⚠️ Sign-in failed. Please try again.';
+    $('g-error').style.display='block';
+  }
 }
 
 function loadFromData(d){
@@ -575,14 +608,10 @@ function saveUD(){
   const data={txns,goals,cur};
   // Save to localStorage immediately
   localStorage.setItem('sw_'+user.id,JSON.stringify(data));
-  // Save to Firebase
-  if(window.fbReady){
-    $('sync-dot').style.background='#D4A017';
-    window.fbSave(user.id,data).then(()=>{
-      $('sync-dot').style.display='block';
-      $('sync-dot').style.background='#27AE60';
-    });
-  }
+  // Debounce Firebase write to batch rapid changes
+  $('sync-dot').style.background='#D4A017';
+  $('sync-dot').style.display='block';
+  debouncedFbSave(user.id,data);
 }
 
 function showApp(){
@@ -661,7 +690,7 @@ function addTxn(){
   if(!desc){flash($('f-desc'));return;}
   if(!amt||amt<=0){flash($('f-amt'));return;}
   if(!date){flash($('f-date'));return;}
-  if(date>today()){alert('Future dates are not allowed!');return;}
+  if(new Date(date)>new Date(today())){alert('Future dates are not allowed!');return;}
   txns.unshift({id:Date.now(),desc,amt,date,cat,type:txnType});
   saveUD();
   const d=new Date(date);
@@ -762,7 +791,7 @@ function renderGoals(){
     return `<div class="gitem">
       <div class="gtop">
         <div>
-          <div class="gname">${g.name}${done?' 🎉':''}</div>
+          <div class="gname">${esc(g.name)}${done?' 🎉':''}</div>
           <div class="gtag">📈 ${rl}</div>
           <div class="gamts">${catLbl}</div>
         </div>
@@ -784,12 +813,10 @@ function renderGoals(){
 
 // ── DATE NAV (current month only) ──
 function getMonthTxns(){
-  const now=new Date();
-  return txns.filter(t=>{const d=new Date(t.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  return txns.filter(t=>{const d=new Date(t.date);return d.getMonth()===viewDate.getMonth()&&d.getFullYear()===viewDate.getFullYear();});
 }
 function updateDNav(){
-  const now=new Date();
-  $('dnav-my').textContent=`${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+  $('dnav-my').textContent=`${MONTHS[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
   const mt=getMonthTxns();
   $('dnav-sub').textContent=`${mt.length} transaction${mt.length!==1?'s':''}`;
 }
@@ -828,8 +855,8 @@ function renderTxns(){
     return `<li class="txi">
       <div class="txic ${x.type}">${x.cat.split(' ')[0]}</div>
       <div class="txinfo">
-        <div class="txn">${x.desc}</div>
-        <div class="txm">${x.cat.split(' ').slice(1).join(' ')} · ${fmtDate(x.date)}</div>
+        <div class="txn">${esc(x.desc)}</div>
+        <div class="txm">${esc(x.cat.split(' ').slice(1).join(' '))} · ${fmtDate(x.date)}</div>
       </div>
       <div class="txa">
         <div class="main ${x.type}">${x.type==='inc'?'+':'−'}${cur.s}${fmtNum(x.amt)}</div>
