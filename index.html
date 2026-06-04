@@ -927,24 +927,22 @@ function renderGoals(){
   }).join('');
 }
 
-// ── HISTORY ──
-function setFilter(f,btn){
-  txnFilter=f;
-  document.querySelectorAll('.fbts button').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on'); renderTxns();
-}
-
 function renderTxns(){
   const list=$('tx-list');
   const searchEl=$('tx-search');
   const q=searchEl?searchEl.value.toLowerCase():'';
-  let t=getMonthTxns();
+
+  let t=[...txns];
+  t.sort((a,b)=>new Date(b.date)-new Date(a.date));
+
   if(txnFilter!=='all') t=t.filter(x=>x.type===txnFilter);
   if(q) t=t.filter(x=>x.desc.toLowerCase().includes(q)||x.cat.toLowerCase().includes(q));
+
   if(!t.length){
-    list.innerHTML=`<div class="empty"><span>📋</span>${q?'No matches found':'No transactions for '+MONTHS[viewDate.getMonth()]}</div>`;
+    list.innerHTML=`<div class="empty"><span>📋</span>${q?'No matches found':'No transactions found'}</div>`;
     return;
   }
+
   list.innerHTML=t.map(x=>{
     const cv=cvtOn&&cvtRate?`<div class="conv">≈${csym(cvtTo)}${fmtNum(x.amt*cvtRate)}</div>`:'';
     return `<li class="txi">
