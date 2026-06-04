@@ -14,38 +14,27 @@
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import{getFirestore,doc,setDoc,onSnapshot}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-
 const firebaseConfig={
-  apiKey:"AIzaSyDTRVqlkHxwvCVpIBKiUDuJGq17ky2V_xQ",
-  authDomain:"spendwise-d53c2.firebaseapp.com",
-  projectId:"spendwise-d53c2",
-  storageBucket:"spendwise-d53c2.firebasestorage.app",
-  messagingSenderId:"122348613571",
-  appId:"1:122348613571:web:2b2adebe4f2698319b1776"
+apiKey:"AIzaSyDTRVqlkHxwvCVpIBKiUDuJGq17ky2V_xQ",
+authDomain:"spendwise-d53c2.firebaseapp.com",
+projectId:"spendwise-d53c2",
+storageBucket:"spendwise-d53c2.firebasestorage.app",
+messagingSenderId:"122348613571",
+appId:"1:122348613571:web:2b2adebe4f2698319b1776"
 };
-
 const fbApp=initializeApp(firebaseConfig);
 const db=getFirestore(fbApp);
 let unsubscribe=null;
-
 window.fbSave=async(uid,data)=>{
-  try{
-    await setDoc(doc(db,'users',uid),data);
-  }catch(e){console.warn('FB save failed',e);}
+try{await setDoc(doc(db,'users',uid),data);}catch(e){console.warn('FB save failed',e);}
 };
-
 window.fbListen=(uid,onData)=>{
-  if(unsubscribe) unsubscribe();
-  // onSnapshot fires immediately with current data — no need for a separate getDoc
-  unsubscribe=onSnapshot(doc(db,'users',uid),(snap)=>{
-    if(snap.exists()) onData(snap.data());
-  },(e)=>{console.warn('FB listen failed',e);});
+if(unsubscribe) unsubscribe();
+unsubscribe=onSnapshot(doc(db,'users',uid),(snap)=>{
+if(snap.exists()) onData(snap.data());
+},(e)=>{console.warn('FB listen failed',e);});
 };
-
-window.fbStop=()=>{
-  if(unsubscribe){unsubscribe();unsubscribe=null;}
-};
-
+window.fbStop=()=>{if(unsubscribe){unsubscribe();unsubscribe=null;}};
 window.fbReady=true;
 document.dispatchEvent(new Event('fb-ready'));
 </script>
@@ -55,6 +44,7 @@ document.dispatchEvent(new Event('fb-ready'));
   --bg:#F5F7F2;--sur:#fff;--txt:#1C1C1C;--mut:#8A8A8A;--bdr:#E6EAE0;
   --acc:#3A6B1E;--acl:#EAF2E0;--red:#C0392B;--rdl:#FDECEA;
   --grn:#27AE60;--gnl:#E9F7EF;--gld:#C8960A;--gdl:#FDF6E3;
+  --carry:#6B4EBC;--carryl:#F0ECFF;
   --shd:0 2px 16px rgba(0,0,0,.07);
   --st:env(safe-area-inset-top);--sb:env(safe-area-inset-bottom);
 }
@@ -115,26 +105,40 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
 .cvt-lbl span{display:block;font-size:.65rem;color:var(--gld);margin-top:1px;}
 .cvt-sel{background:#fff;border:1px solid #E8C84A;border-radius:7px;padding:.28rem .5rem;font-family:'Nunito',sans-serif;font-size:.75rem;font-weight:700;color:#7A5C00;outline:none;}
 
-/* DATE NAV */
-.dnav{background:var(--sur);border-radius:12px;padding:.65rem .9rem;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shd);border:1px solid var(--bdr);margin-bottom:.85rem;}
-.dnav button{background:var(--bg);border:1px solid var(--bdr);border-radius:7px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;}
-.dnav-c{text-align:center;}
-.dnav-my{font-family:'Playfair Display',serif;font-size:.95rem;}
-.dnav-sub{font-size:.66rem;color:var(--mut);margin-top:1px;}
-.dnav-today{background:none;border:none;color:var(--acc);font-size:.68rem;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer;padding:0;margin-top:2px;display:none;}
+/* DATE NAV — now with prev/next arrows */
+.dnav{background:var(--sur);border-radius:14px;padding:.7rem .9rem;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shd);border:1px solid var(--bdr);margin-bottom:.85rem;gap:.5rem;}
+.dnav-arrow{background:var(--bg);border:1.5px solid var(--bdr);border-radius:9px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1rem;flex-shrink:0;transition:background .15s,border-color .15s;}
+.dnav-arrow:hover{background:var(--acl);border-color:var(--acc);}
+.dnav-arrow:active{transform:scale(.93);}
+.dnav-arrow:disabled{opacity:.35;cursor:default;pointer-events:none;}
+.dnav-c{text-align:center;flex:1;}
+.dnav-my{font-family:'Playfair Display',serif;font-size:1rem;font-weight:500;}
+.dnav-sub{font-size:.66rem;color:var(--mut);margin-top:2px;}
+.dnav-today{background:var(--acl);border:none;color:var(--acc);font-size:.65rem;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer;padding:.18rem .55rem;border-radius:20px;margin-top:4px;display:inline-block;}
+.dnav-today:hover{background:var(--acc);color:#fff;}
+
+/* CARRYOVER BANNER */
+.carry-bar{background:var(--carryl);border:1px solid #C4B5F4;border-radius:10px;padding:.5rem .9rem;margin-bottom:.85rem;display:none;align-items:center;gap:.5rem;}
+.carry-bar.show{display:flex;}
+.carry-ic{font-size:1rem;flex-shrink:0;}
+.carry-txt{font-size:.72rem;color:#3D2B9E;font-weight:600;flex:1;line-height:1.45;}
+.carry-txt span{display:block;font-size:.65rem;color:#6B4EBC;margin-top:1px;font-weight:400;}
 
 /* SUMMARY */
 .sum{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:.85rem;}
-.sc{background:var(--sur);border-radius:12px;padding:.8rem .65rem;box-shadow:var(--shd);border:1px solid var(--bdr);}
+.sc{background:var(--sur);border-radius:12px;padding:.8rem .65rem;box-shadow:var(--shd);border:1px solid var(--bdr);position:relative;overflow:hidden;}
 .sc label{display:block;font-size:.6rem;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin-bottom:.25rem;font-weight:700;}
 .sc .amt{font-family:'Playfair Display',serif;font-size:1rem;line-height:1.1;word-break:break-all;}
 .sc.inc .amt{color:var(--grn);}
 .sc.exp .amt{color:var(--red);}
+.sc.bal .amt.positive{color:var(--acc);}
+.sc.bal .amt.negative{color:var(--red);}
 .sc .conv{font-size:.62rem;color:var(--gld);margin-top:2px;font-weight:700;display:none;}
+.sc .carry-note{font-size:.58rem;color:var(--carry);margin-top:2px;font-weight:700;display:none;}
 
 /* TABS */
 .tabs{display:flex;background:var(--sur);border-radius:10px;padding:3px;gap:3px;border:1px solid var(--bdr);box-shadow:var(--shd);margin-bottom:.85rem;}
-.tabs button{flex:1;padding:.5rem .2rem;border:none;border-radius:8px;font-family:'Nunito',sans-serif;font-size:.75rem;font-weight:700;cursor:pointer;background:transparent;color:var(--mut);}
+.tabs button{flex:1;padding:.5rem .2rem;border:none;border-radius:8px;font-family:'Nunito',sans-serif;font-size:.75rem;font-weight:700;cursor:pointer;background:transparent;color:var(--mut);transition:background .15s,color .15s;}
 .tabs button.on{background:var(--acc);color:#fff;}
 
 /* PANELS */
@@ -156,8 +160,8 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
 .fmt-row{display:flex;gap:.3rem;margin-top:.3rem;}
 .fmt-btn{flex:1;padding:.25rem;font-size:.62rem;font-weight:700;border-radius:7px;border:1.5px solid var(--bdr);background:var(--bg);color:var(--mut);cursor:pointer;font-family:'Nunito',sans-serif;}
 .fmt-btn.on{border-color:var(--acc);background:var(--acl);color:var(--acc);}
-.add-btn{width:100%;margin-top:.75rem;padding:.8rem;background:var(--acc);color:#fff;border:none;border-radius:11px;font-family:'Nunito',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;}
-.add-btn:active{opacity:.8;}
+.add-btn{width:100%;margin-top:.75rem;padding:.85rem;background:var(--acc);color:#fff;border:none;border-radius:11px;font-family:'Nunito',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;transition:opacity .15s,transform .1s;}
+.add-btn:active{opacity:.8;transform:scale(.98);}
 .add-btn.ok{background:var(--grn);}
 
 /* GOALS */
@@ -169,7 +173,6 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
 .gamts{font-size:.68rem;color:var(--mut);margin-top:2px;}
 .gdel{background:none;border:none;color:var(--bdr);cursor:pointer;font-size:.8rem;padding:.2rem;}
 .gdel:active{color:var(--red);}
-/* Progress bar with pct inside */
 .gbar-wrap{position:relative;background:var(--bdr);border-radius:99px;height:22px;overflow:hidden;margin:.4rem 0;cursor:pointer;}
 .gbar-fill{height:100%;border-radius:99px;display:flex;align-items:center;justify-content:flex-end;padding-right:7px;min-width:2rem;transition:width .7s cubic-bezier(.34,1.1,.64,1);}
 .gbar-pct-in{font-size:.62rem;font-weight:800;color:#fff;}
@@ -177,7 +180,6 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
 .gamt-detail{font-size:.7rem;color:var(--mut);text-align:right;display:none;margin-top:1px;}
 .gstatus{font-size:.68rem;color:var(--mut);text-align:right;}
 .gstatus.done{color:var(--grn);font-weight:700;}
-/* Goal form */
 .gform{margin-top:.9rem;padding-top:.9rem;border-top:1px solid var(--bdr);}
 .gform h4{font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);font-weight:700;margin-bottom:.7rem;}
 .rate-row{display:flex;align-items:center;gap:.45rem;margin-top:.25rem;}
@@ -197,10 +199,11 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
 .txhdr{padding:.85rem 1.1rem .6rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bdr);}
 .txhdr h2{font-family:'Playfair Display',serif;font-size:.92rem;font-weight:400;color:var(--mut);}
 .fbts{display:flex;gap:.28rem;}
-.fbts button{padding:.22rem .55rem;border:1px solid var(--bdr);border-radius:20px;font-family:'Nunito',sans-serif;font-size:.68rem;cursor:pointer;background:var(--bg);color:var(--mut);font-weight:700;}
+.fbts button{padding:.22rem .55rem;border:1px solid var(--bdr);border-radius:20px;font-family:'Nunito',sans-serif;font-size:.68rem;cursor:pointer;background:var(--bg);color:var(--mut);font-weight:700;transition:background .15s;}
 .fbts button.on{background:var(--acc);color:#fff;border-color:var(--acc);}
 .txlist{list-style:none;}
-.txi{display:flex;align-items:center;padding:.78rem 1.1rem;border-bottom:1px solid var(--bdr);gap:.65rem;}
+.txi{display:flex;align-items:center;padding:.78rem 1.1rem;border-bottom:1px solid var(--bdr);gap:.65rem;animation:slideIn .2s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:none;}}
 .txi:last-child{border-bottom:none;}
 .txic{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
 .txic.inc{background:var(--gnl);}
@@ -213,10 +216,16 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
 .txa .main.inc{color:var(--grn);}
 .txa .main.exp{color:var(--red);}
 .txa .conv{font-size:.62rem;color:var(--gld);font-weight:700;}
-.txdel{background:none;border:none;color:var(--bdr);cursor:pointer;font-size:.8rem;padding:.25rem;flex-shrink:0;}
+.txdel{background:none;border:none;color:var(--bdr);cursor:pointer;font-size:.8rem;padding:.25rem .35rem;flex-shrink:0;border-radius:6px;transition:background .15s,color .15s;}
+.txdel:hover{background:var(--rdl);color:var(--red);}
 .txdel:active{color:var(--red);}
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--mut);font-size:.82rem;}
 .empty span{display:block;font-size:1.8rem;margin-bottom:.4rem;}
+
+/* SEARCH/FILTER ROW in history */
+.tx-search-row{padding:.6rem 1rem;border-bottom:1px solid var(--bdr);display:flex;gap:.5rem;align-items:center;}
+.tx-search{flex:1;background:var(--bg);border:1.5px solid var(--bdr);border-radius:8px;padding:.4rem .75rem;font-family:'Nunito',sans-serif;font-size:.8rem;color:var(--txt);outline:none;}
+.tx-search:focus{border-color:var(--acc);}
 
 /* CURRENCY MODAL */
 .mover{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;align-items:flex-end;justify-content:center;}
@@ -230,6 +239,9 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
 .csym{font-size:1rem;width:26px;text-align:center;font-weight:700;color:var(--acc);}
 .cname{font-size:.85rem;font-weight:600;}
 .ccode{font-size:.68rem;color:var(--mut);}
+
+/* SYNC DOT */
+#sync-dot{width:8px;height:8px;border-radius:50%;background:#27AE60;margin-right:2px;}
 </style>
 </head>
 <body>
@@ -286,7 +298,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
   <div class="hdr">
     <h1>SpendWise 🌿</h1>
     <div class="hdr-r">
-      <div id="sync-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:#27AE60;margin-right:2px;" title="Synced"></div>
+      <div id="sync-dot" style="display:none;" title="Synced"></div>
       <button class="cur-btn" id="cur-btn" onclick="openCurModal()">৳ BDT</button>
       <button class="cvt-btn" id="cvt-btn" onclick="toggleConvert()">⇄</button>
       <div id="uavt-wrap" onclick="toggleUMenu()"></div>
@@ -299,17 +311,26 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
     <select class="cvt-sel" id="cvt-sel" onchange="onCvtChange()"></select>
   </div>
 
-  <!-- Date nav - current month only, no navigation -->
+  <!-- DATE NAV — with ← → arrows -->
   <div class="dnav">
-    <div class="dnav-c" style="width:100%;">
+    <button class="dnav-arrow" id="dnav-prev" onclick="changeMonth(-1)" title="Previous month">&#8592;</button>
+    <div class="dnav-c">
       <div class="dnav-my" id="dnav-my">—</div>
       <div class="dnav-sub" id="dnav-sub">0 transactions</div>
+      <button class="dnav-today" id="dnav-today-btn" onclick="goToToday()" style="display:none;">Back to today</button>
     </div>
+    <button class="dnav-arrow" id="dnav-next" onclick="changeMonth(1)" title="Next month">&#8594;</button>
+  </div>
+
+  <!-- Carryover banner (shown when viewing a month that has a carryover) -->
+  <div class="carry-bar" id="carry-bar">
+    <div class="carry-ic">↩</div>
+    <div class="carry-txt" id="carry-txt">Previous month balance carried over</div>
   </div>
 
   <!-- Summary -->
   <div class="sum">
-    <div class="sc bal"><label>Balance</label><div class="amt" id="s-bal">0.00</div><div class="conv" id="s-bal-c"></div></div>
+    <div class="sc bal"><label>Balance</label><div class="amt" id="s-bal">0.00</div><div class="conv" id="s-bal-c"></div><div class="carry-note" id="s-carry-note"></div></div>
     <div class="sc inc"><label>Income</label><div class="amt" id="s-inc">0.00</div><div class="conv" id="s-inc-c"></div></div>
     <div class="sc exp"><label>Expenses</label><div class="amt" id="s-exp">0.00</div><div class="conv" id="s-exp-c"></div></div>
   </div>
@@ -414,6 +435,9 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);min-h
           <button onclick="setFilter('exp',this)">Out</button>
         </div>
       </div>
+      <div class="tx-search-row">
+        <input class="tx-search" id="tx-search" type="text" placeholder="🔍 Search transactions..." oninput="renderTxns()"/>
+      </div>
       <ul class="txlist" id="tx-list"></ul>
     </div>
   </div>
@@ -463,7 +487,6 @@ function fmtDate(d){const[y,m,day]=d.split('-');return `${MSHORT[+m-1]} ${+day},
 function csym(code){return (CURRENCIES.find(x=>x.c===code)||{s:code}).s;}
 function parseAmt(v){return parseFloat(v.replace(/,/g,''))||0;}
 function flash(el){el.classList.add('err');el.focus();setTimeout(()=>el.classList.remove('err'),1200);}
-// Escape user-supplied strings before injecting into innerHTML
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function applyFmt(str,fmt){
@@ -480,7 +503,6 @@ function applyFmt(str,fmt){
   return str.replace(/\B(?=(\d{3})+(?!\d))/g,',');
 }
 
-// Debounced Firestore save — batches rapid changes into one write
 let _saveTimer=null;
 function debouncedFbSave(uid,data){
   clearTimeout(_saveTimer);
@@ -515,12 +537,27 @@ function setFmt(which,fmt){
     reformat($('g-target'),fmt);
   }
 }
-
 function reformat(el,fmt){
   if(!el.value) return;
   const raw=el.value.replace(/,/g,'');
   const pts=raw.split('.');
   el.value=applyFmt(pts[0],fmt)+(pts[1]!==undefined?'.'+pts[1]:'');
+}
+
+// ── MONTH CARRYOVER ──
+// Returns the running balance up to (but not including) the given month/year
+function getCarryoverBalance(year, month) {
+  // Filter all txns strictly before this month
+  let bal = 0;
+  txns.forEach(t => {
+    const d = new Date(t.date);
+    const tYear = d.getFullYear();
+    const tMonth = d.getMonth(); // 0-indexed
+    if(tYear < year || (tYear === year && tMonth < month)) {
+      bal += t.type === 'inc' ? t.amt : -t.amt;
+    }
+  });
+  return bal;
 }
 
 // ── GOOGLE AUTH ──
@@ -536,13 +573,8 @@ function loadGoogleScript(cb){
 function doGoogleLogin(){
   $('g-error').style.display='none';
   loadGoogleScript(()=>{
-    google.accounts.id.initialize({
-      client_id:CID,
-      callback:onGoogleCred,
-      ux_mode:'popup',
-    });
+    google.accounts.id.initialize({client_id:CID,callback:onGoogleCred,ux_mode:'popup'});
     google.accounts.id.prompt(n=>{
-      // origin_mismatch or popup blocked — fall back to renderButton
       if(n.isNotDisplayed()||n.isSkippedMoment()){
         const wrap=document.createElement('div');
         wrap.style.cssText='margin-top:1rem;';
@@ -558,8 +590,6 @@ function doGoogleLogin(){
 }
 
 async function onGoogleCred(res){
-  // Verify the credential token via Google's tokeninfo endpoint
-  // This avoids trusting an unverified JWT payload client-side
   try{
     const r=await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${res.credential}`);
     if(!r.ok) throw new Error('Token verification failed');
@@ -567,8 +597,7 @@ async function onGoogleCred(res){
     if(p.aud!==CID) throw new Error('Client ID mismatch');
     user={name:p.name,email:p.email,pic:p.picture,id:p.sub};
     localStorage.setItem('sw_u',JSON.stringify(user));
-    showApp();
-    loadUD();
+    showApp(); loadUD();
   }catch(e){
     console.warn('Google credential error',e);
     $('g-error').textContent='⚠️ Sign-in failed. Please try again.';
@@ -583,21 +612,15 @@ function loadFromData(d){
 }
 
 function loadUD(){
-  // Load from localStorage as fallback first
   const d=JSON.parse(localStorage.getItem('sw_'+user.id)||'{}');
   if(d.txns) loadFromData(d);
-  // Then sync from Firebase
-  if(window.fbReady){
-    startFirebaseSync();
-  } else {
-    document.addEventListener('fb-ready',startFirebaseSync,{once:true});
-  }
+  if(window.fbReady){startFirebaseSync();}
+  else{document.addEventListener('fb-ready',startFirebaseSync,{once:true});}
 }
 
 function startFirebaseSync(){
   window.fbListen(user.id,(data)=>{
     loadFromData(data);
-    // Also update localStorage cache
     localStorage.setItem('sw_'+user.id,JSON.stringify(data));
     $('sync-dot').style.display='block';
   });
@@ -606,9 +629,7 @@ function startFirebaseSync(){
 function saveUD(){
   if(!user) return;
   const data={txns,goals,cur};
-  // Save to localStorage immediately
   localStorage.setItem('sw_'+user.id,JSON.stringify(data));
-  // Debounce Firebase write to batch rapid changes
   $('sync-dot').style.background='#D4A017';
   $('sync-dot').style.display='block';
   debouncedFbSave(user.id,data);
@@ -681,6 +702,103 @@ function setType(t){
   $('t-inc').className=t==='inc'?'ei':'';
 }
 
+// ── DATE NAVIGATION ──
+function getNow(){return new Date();}
+
+function isCurrentMonth(){
+  const n=getNow();
+  return viewDate.getMonth()===n.getMonth()&&viewDate.getFullYear()===n.getFullYear();
+}
+
+function changeMonth(dir){
+  viewDate=new Date(viewDate.getFullYear(), viewDate.getMonth()+dir, 1);
+  updateDNav(); updateSum(); renderTxns();
+}
+
+function goToToday(){
+  const n=getNow();
+  viewDate=new Date(n.getFullYear(),n.getMonth(),1);
+  updateDNav(); updateSum(); renderTxns();
+}
+
+function getEarliestTxnDate(){
+  if(!txns.length) return null;
+  return txns.reduce((min,t)=>t.date<min?t.date:min, txns[0].date);
+}
+
+function updateDNav(){
+  $('dnav-my').textContent=`${MONTHS[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
+  const mt=getMonthTxns();
+  $('dnav-sub').textContent=`${mt.length} transaction${mt.length!==1?'s':''}`;
+
+  // Show/hide "Back to today" button
+  const todayBtn=$('dnav-today-btn');
+  todayBtn.style.display=isCurrentMonth()?'none':'inline-block';
+
+  // Disable next arrow if at current month
+  const nextBtn=$('dnav-next');
+  nextBtn.disabled=isCurrentMonth();
+
+  // Disable prev arrow if no transactions exist before this month
+  const prevBtn=$('dnav-prev');
+  const earliest=getEarliestTxnDate();
+  if(earliest){
+    const eDate=new Date(earliest);
+    const eYear=eDate.getFullYear(), eMon=eDate.getMonth();
+    const vYear=viewDate.getFullYear(), vMon=viewDate.getMonth();
+    prevBtn.disabled=(vYear<eYear)||(vYear===eYear&&vMon<=eMon);
+  } else {
+    prevBtn.disabled=isCurrentMonth();
+  }
+}
+
+// ── SUMMARY with carryover ──
+function getMonthTxns(){
+  return txns.filter(t=>{
+    const d=new Date(t.date);
+    return d.getMonth()===viewDate.getMonth()&&d.getFullYear()===viewDate.getFullYear();
+  });
+}
+
+function updateSum(){
+  const mt=getMonthTxns();
+  const inc=mt.filter(t=>t.type==='inc').reduce((s,t)=>s+t.amt,0);
+  const exp=mt.filter(t=>t.type==='exp').reduce((s,t)=>s+t.amt,0);
+
+  // Carryover: balance from all months before the viewed month
+  const carryover=getCarryoverBalance(viewDate.getFullYear(), viewDate.getMonth());
+  const bal=carryover + inc - exp;
+
+  $('s-inc').textContent=fmtNum(inc);
+  $('s-exp').textContent=fmtNum(exp);
+  $('s-bal').textContent=fmtNum(bal);
+
+  // Color the balance card
+  const balEl=$('s-bal');
+  balEl.className='amt '+(bal>=0?'positive':'negative');
+
+  // Show carryover note if nonzero
+  const carryNote=$('s-carry-note');
+  const carryBar=$('carry-bar');
+  if(carryover!==0){
+    const sign=carryover>=0?'+':'';
+    carryNote.textContent=`incl. ${sign}${cur.s}${fmtNum(carryover)} carried`;
+    carryNote.style.display='block';
+    $('carry-txt').innerHTML=`<strong>Carried from previous months:</strong> ${carryover>=0?'+':''}${cur.s}${fmtNum(Math.abs(carryover))}<span>${carryover>=0?'Positive balance added to this month':'Deficit carried into this month'}</span>`;
+    carryBar.classList.add('show');
+  } else {
+    carryNote.style.display='none';
+    carryBar.classList.remove('show');
+  }
+
+  if(cvtOn&&cvtRate){
+    const show=(id,v)=>{const e=$(id);e.textContent=`≈${csym(cvtTo)}${fmtNum(v*cvtRate)}`;e.style.display='block';};
+    show('s-inc-c',inc); show('s-exp-c',exp); show('s-bal-c',bal);
+  } else {
+    ['s-inc-c','s-exp-c','s-bal-c'].forEach(id=>{$(id).style.display='none';});
+  }
+}
+
 // ── TRANSACTIONS ──
 function addTxn(){
   const desc=$('f-desc').value.trim();
@@ -702,6 +820,7 @@ function addTxn(){
 }
 
 function delTxn(id){
+  if(!confirm('Delete this transaction?')) return;
   txns=txns.filter(t=>t.id!==id);
   saveUD(); updateDNav(); updateSum(); renderTxns(); renderGoals();
 }
@@ -719,13 +838,12 @@ function updateRatePrev(){
   const r=parseFloat($('g-rate').value)||0;
   if(!r){$('rate-prev').textContent='Enter a rate above';return;}
   if(rateType==='pct')
-    $('rate-prev').textContent=`e.g. ${r}% of ${cur.s}200 = ${cur.s}${(200*r/100).toFixed(2)} saved`;
+    $('rate-prev').textContent=`e.g. ${r}% of ${cur.s}200 income = ${cur.s}${(200*r/100).toFixed(2)} saved`;
   else
     $('rate-prev').textContent=`${cur.s}${r} saved per matching income`;
 }
 
 function onCatChk(cb){cb.parentElement.classList.toggle('on',cb.checked);}
-
 function onAllCat(cb){
   document.querySelectorAll('#g-cats input[type=checkbox]').forEach(c=>{
     c.checked=cb.checked; c.parentElement.classList.toggle('on',cb.checked);
@@ -789,53 +907,26 @@ function renderGoals(){
     const cvtExtra=cvtOn&&cvtRate?` · ≈${csym(cvtTo)}${fmtNum(saved*cvtRate)} of ${csym(cvtTo)}${fmtNum(g.target*cvtRate)}`:'';
     const pctIn=pct>20;
     return `<div class="gitem">
-      <div class="gtop">
-        <div>
-          <div class="gname">${esc(g.name)}${done?' 🎉':''}</div>
-          <div class="gtag">📈 ${rl}</div>
-          <div class="gamts">${catLbl}</div>
-        </div>
-        <button class="gdel" onclick="delGoal(${g.id})">✕</button>
-      </div>
-      <div class="gbar-wrap" onclick="toggleGAmt(${g.id})">
-        <div class="gbar-fill" style="width:${pct}%;background:${col}">
-          ${pctIn?`<span class="gbar-pct-in">${pct.toFixed(0)}%</span>`:''}
-        </div>
-        ${!pctIn?`<span class="gbar-pct-out">${pct.toFixed(0)}%</span>`:''}
-      </div>
-      <div id="ga-${g.id}" class="gamt-detail">
-        ${cur.s}${fmtNum(saved)} saved of ${cur.s}${fmtNum(g.target)}${cvtExtra}${done?'':` · ${cur.s}${fmtNum(rem)} to go`}
-      </div>
-      <div class="gstatus${done?' done':''}">${done?'✅ Goal reached!':'Tap bar to see amounts'}</div>
-    </div>`;
+<div class="gtop">
+  <div>
+    <div class="gname">${esc(g.name)}${done?' 🎉':''}</div>
+    <div class="gtag">📈 ${rl}</div>
+    <div class="gamts">${catLbl}</div>
+  </div>
+  <button class="gdel" onclick="delGoal(${g.id})">✕</button>
+</div>
+<div class="gbar-wrap" onclick="toggleGAmt(${g.id})">
+  <div class="gbar-fill" style="width:${pct}%;background:${col}">
+    ${pctIn?`<span class="gbar-pct-in">${pct.toFixed(0)}%</span>`:''}
+  </div>
+  ${!pctIn?`<span class="gbar-pct-out">${pct.toFixed(0)}%</span>`:''}
+</div>
+<div id="ga-${g.id}" class="gamt-detail">
+  ${cur.s}${fmtNum(saved)} saved of ${cur.s}${fmtNum(g.target)}${cvtExtra}${done?'':` · ${cur.s}${fmtNum(rem)} to go`}
+</div>
+<div class="gstatus${done?' done':''}">${done?'✅ Goal reached!':'Tap bar to see amounts'}</div>
+</div>`;
   }).join('');
-}
-
-// ── DATE NAV (current month only) ──
-function getMonthTxns(){
-  return txns.filter(t=>{const d=new Date(t.date);return d.getMonth()===viewDate.getMonth()&&d.getFullYear()===viewDate.getFullYear();});
-}
-function updateDNav(){
-  $('dnav-my').textContent=`${MONTHS[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
-  const mt=getMonthTxns();
-  $('dnav-sub').textContent=`${mt.length} transaction${mt.length!==1?'s':''}`;
-}
-
-// ── SUMMARY ──
-function updateSum(){
-  const mt=getMonthTxns();
-  const inc=mt.filter(t=>t.type==='inc').reduce((s,t)=>s+t.amt,0);
-  const exp=mt.filter(t=>t.type==='exp').reduce((s,t)=>s+t.amt,0);
-  const bal=inc-exp;
-  $('s-inc').textContent=fmtNum(inc);
-  $('s-exp').textContent=fmtNum(exp);
-  $('s-bal').textContent=fmtNum(bal);
-  if(cvtOn&&cvtRate){
-    const show=(id,v)=>{const e=$(id);e.textContent=`≈${csym(cvtTo)}${fmtNum(v*cvtRate)}`;e.style.display='block';};
-    show('s-inc-c',inc); show('s-exp-c',exp); show('s-bal-c',bal);
-  } else {
-    ['s-inc-c','s-exp-c','s-bal-c'].forEach(id=>{$(id).style.display='none';});
-  }
 }
 
 // ── HISTORY ──
@@ -847,23 +938,29 @@ function setFilter(f,btn){
 
 function renderTxns(){
   const list=$('tx-list');
+  const searchEl=$('tx-search');
+  const q=searchEl?searchEl.value.toLowerCase():'';
   let t=getMonthTxns();
   if(txnFilter!=='all') t=t.filter(x=>x.type===txnFilter);
-  if(!t.length){list.innerHTML=`<div class="empty"><span>📋</span>No transactions for ${MONTHS[viewDate.getMonth()]}</div>`;return;}
+  if(q) t=t.filter(x=>x.desc.toLowerCase().includes(q)||x.cat.toLowerCase().includes(q));
+  if(!t.length){
+    list.innerHTML=`<div class="empty"><span>📋</span>${q?'No matches found':'No transactions for '+MONTHS[viewDate.getMonth()]}</div>`;
+    return;
+  }
   list.innerHTML=t.map(x=>{
     const cv=cvtOn&&cvtRate?`<div class="conv">≈${csym(cvtTo)}${fmtNum(x.amt*cvtRate)}</div>`:'';
     return `<li class="txi">
-      <div class="txic ${x.type}">${x.cat.split(' ')[0]}</div>
-      <div class="txinfo">
-        <div class="txn">${esc(x.desc)}</div>
-        <div class="txm">${esc(x.cat.split(' ').slice(1).join(' '))} · ${fmtDate(x.date)}</div>
-      </div>
-      <div class="txa">
-        <div class="main ${x.type}">${x.type==='inc'?'+':'−'}${cur.s}${fmtNum(x.amt)}</div>
-        ${cv}
-      </div>
-      <button class="txdel" onclick="delTxn(${x.id})">✕</button>
-    </li>`;
+<div class="txic ${x.type}">${x.cat.split(' ')[0]}</div>
+<div class="txinfo">
+  <div class="txn">${esc(x.desc)}</div>
+  <div class="txm">${esc(x.cat.split(' ').slice(1).join(' '))} · ${fmtDate(x.date)}</div>
+</div>
+<div class="txa">
+  <div class="main ${x.type}">${x.type==='inc'?'+':'−'}${cur.s}${fmtNum(x.amt)}</div>
+  ${cv}
+</div>
+<button class="txdel" onclick="delTxn(${x.id})" title="Delete">✕</button>
+</li>`;
   }).join('');
 }
 
@@ -874,10 +971,10 @@ function onModalClick(e){if(e.target===$('cur-modal'))$('cur-modal').classList.r
 function filterCur(){const q=$('cur-search').value.toLowerCase();renderCurList(CURRENCIES.filter(x=>x.n.toLowerCase().includes(q)||x.c.toLowerCase().includes(q)));}
 function renderCurList(list){
   $('cur-list').innerHTML=list.map(x=>`
-    <div class="copt${x.c===cur.c?' on':''}" onclick="selCur('${x.c}')">
-      <div class="csym">${x.s}</div>
-      <div><div class="cname">${x.n}</div><div class="ccode">${x.c}</div></div>
-    </div>`).join('');
+<div class="copt${x.c===cur.c?' on':''}" onclick="selCur('${x.c}')">
+  <div class="csym">${x.s}</div>
+  <div><div class="cname">${x.n}</div><div class="ccode">${x.c}</div></div>
+</div>`).join('');
 }
 function selCur(code){
   cur=CURRENCIES.find(x=>x.c===code);
@@ -891,24 +988,13 @@ async function toggleConvert(){
   cvtOn=!cvtOn;
   $('cvt-btn').classList.toggle('on',cvtOn);
   $('cvt-bar').classList.toggle('show',cvtOn);
-  if(cvtOn){
-    populateCvtSel();
-    await fetchRate();
-  } else {
-    cvtRate=null;
-    updateSum(); renderTxns(); renderGoals();
-  }
+  if(cvtOn){populateCvtSel();await fetchRate();}
+  else{cvtRate=null;updateSum(); renderTxns(); renderGoals();}
 }
-
 function populateCvtSel(){
   $('cvt-sel').innerHTML=CURRENCIES.filter(x=>x.c!==cur.c).map(x=>`<option value="${x.c}"${x.c===cvtTo?' selected':''}>${x.c}</option>`).join('');
 }
-
-async function onCvtChange(){
-  cvtTo=$('cvt-sel').value;
-  await fetchRate();
-}
-
+async function onCvtChange(){cvtTo=$('cvt-sel').value;await fetchRate();}
 async function fetchRate(){
   cvtTo=$('cvt-sel').value||'USD';
   $('cvt-rate').textContent='Fetching...';
@@ -920,13 +1006,9 @@ async function fetchRate(){
       $('cvt-rate').textContent=`1 ${cur.c} = ${cvtRate.toFixed(4)} ${cvtTo}`;
       updateSum(); renderTxns(); renderGoals();
     } else {
-      $('cvt-rate').textContent='⚠️ Rate unavailable';
-      cvtRate=null;
+      $('cvt-rate').textContent='⚠️ Rate unavailable'; cvtRate=null;
     }
-  } catch(e){
-    $('cvt-rate').textContent='⚠️ No internet';
-    cvtRate=null;
-  }
+  }catch(e){$('cvt-rate').textContent='⚠️ No internet';cvtRate=null;}
 }
 </script>
 </body>
