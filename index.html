@@ -739,17 +739,10 @@ function updateDNav(){
   const nextBtn=$('dnav-next');
   nextBtn.disabled=isCurrentMonth();
 
-  // Disable prev arrow if no transactions exist before this month
-  const prevBtn=$('dnav-prev');
-  const earliest=getEarliestTxnDate();
-  if(earliest){
-    const eDate=new Date(earliest);
-    const eYear=eDate.getFullYear(), eMon=eDate.getMonth();
-    const vYear=viewDate.getFullYear(), vMon=viewDate.getMonth();
-    prevBtn.disabled=(vYear<eYear)||(vYear===eYear&&vMon<=eMon);
-  } else {
-    prevBtn.disabled=isCurrentMonth();
-  }
+
+  // Always allow going to previous months
+const prevBtn = $('dnav-prev');
+prevBtn.disabled = false;
 }
 
 // ── SUMMARY with carryover ──
@@ -762,11 +755,16 @@ function getMonthTxns(){
 
 function updateSum(){
   const mt=getMonthTxns();
+
   const inc=mt.filter(t=>t.type==='inc').reduce((s,t)=>s+t.amt,0);
   const exp=mt.filter(t=>t.type==='exp').reduce((s,t)=>s+t.amt,0);
 
   // Carryover: balance from all months before the viewed month
   const carryover=getCarryoverBalance(viewDate.getFullYear(), viewDate.getMonth());
+
+  console.log("Carryover:", carryover);
+  console.log("Transactions:", txns);
+
   const bal=carryover + inc - exp;
 
   $('s-inc').textContent=fmtNum(inc);
